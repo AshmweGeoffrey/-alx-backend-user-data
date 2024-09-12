@@ -15,31 +15,27 @@ CORS(app, resources={r"/api/v1/*": {"origins": "*"}})
 
 auth = None
 
-if getenv('AUTH_TYPE') == "auth":
+if os.getenv("AUTH_TYPE") == 'basic_auth':
+    print("hello now")
+    from api.v1.auth.basic_auth import BasicAuth
+    auth = BasicAuth()
+else:
     from api.v1.auth.auth import Auth
     auth = Auth()
 
-elif getenv('AUTH_TYPE') == "basic_auth":
-    from api.v1.auth.basic_auth import BasicAuth
-    auth = BasicAuth()
-
 
 @app.before_request
-def filter_request():
+def beforeRequest():
+    """
+    before request
+    """
     if auth is None:
         return
-
-    excluded_paths = [
-        '/api/v1/status/',
-        '/api/v1/unauthorized/',
-        '/api/v1/forbidden/'
-    ]
-    if not auth.require_auth(request.path, excluded_paths):
+    paths = ['/api/v1/status/', '/api/v1/unauthorized/', '/api/v1/forbidden/']
+    if not auth.require_auth(request.path, paths):
         return
-
     if auth.authorization_header(request) is None:
         abort(401)
-
     if auth.current_user(request) is None:
         abort(403)
 
@@ -52,23 +48,17 @@ def not_found(error) -> str:
 
 
 @app.errorhandler(401)
-def unauthorized_request(error) -> str:
-    '''Unauthorized requests
-    '''
-
-    return jsonify({
-        "error": "Unauthorized"
-    }), 401
+def unauthorized(error) -> str:
+    """ Unauthorized handler
+    """
+    return jsonify({"error": "Unauthorized"}), 401
 
 
 @app.errorhandler(403)
-def forbidden_request(error) -> str:
-    '''Forbidden request
-    '''
-
-    return jsonify({
-        "error": "Forbidden"
-    }), 403
+def forbidden(error) -> str:
+    """ forbidden handler
+    """
+    return jsonify({"error": "Forbidden"}), 403
 
 
 if __name__ == "__main__":
